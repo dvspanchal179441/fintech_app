@@ -59,10 +59,10 @@ class _TasksScreenState extends State<TasksScreen> {
                 subtitle: Text('${scheduled.day}/${scheduled.month} ${scheduled.hour}:${scheduled.minute.toString().padLeft(2, '0')}', style: const TextStyle(color: AppTheme.white)),
                 trailing: const Icon(Icons.access_time_rounded, color: AppTheme.primaryBlue),
                 onTap: () async {
-                  final date = await showDatePicker(context: context, initialDate: scheduled, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                  final date = await showDatePicker(context: ctx, initialDate: scheduled, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
                   if (date != null) {
-                    if (!context.mounted) return;
-                    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(scheduled));
+                    if (!ctx.mounted) return;
+                    final time = await showTimePicker(context: ctx, initialTime: TimeOfDay.fromDateTime(scheduled));
                     if (time != null) {
                       setModalState(() => scheduled = DateTime(date.year, date.month, date.day, time.hour, time.minute));
                     }
