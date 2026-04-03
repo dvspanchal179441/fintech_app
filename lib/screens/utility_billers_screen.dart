@@ -165,7 +165,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
                       ));
                     });
                     _saveBillers();
-                    if (!mounted) return;
+                    if (!ctx.mounted) return;
                     Navigator.pop(ctx);
                   }
                 },

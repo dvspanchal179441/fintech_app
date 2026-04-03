@@ -430,7 +430,7 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                     oneDayBefore: false,
                   );
 
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   Navigator.pop(context, {
                     'cardNumber': _numberController.text.replaceAll('-', ''),
                     'cardHolderName': _holderController.text,
