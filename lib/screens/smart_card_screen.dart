@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/local_storage_service.dart';
 import '../theme/app_theme.dart';
 import 'smart_card_detail_screen.dart';
+import '../services/notification_service.dart';
+import 'dart:math' as math;
 
 class SmartCardScreen extends StatefulWidget {
   const SmartCardScreen({super.key});
@@ -11,7 +14,7 @@ class SmartCardScreen extends StatefulWidget {
 }
 
 class _SmartCardScreenState extends State<SmartCardScreen> {
-  List<Map<String, String>> _cards = [];
+  List<Map<String, dynamic>> _cards = [];
   bool _loading = true;
 
   @override
@@ -64,7 +67,7 @@ class _SmartCardScreenState extends State<SmartCardScreen> {
             tooltip: 'Add Card',
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
-              final newCard = await Navigator.push<Map<String, String>>(
+              final newCard = await Navigator.push<Map<String, dynamic>>(
                 context,
                 MaterialPageRoute(builder: (_) => const AddSmartCardScreen()),
               );
@@ -94,7 +97,7 @@ class _SmartCardScreenState extends State<SmartCardScreen> {
     );
   }
 
-  Widget _buildCardTile(Map<String, String> card, int index) {
+  Widget _buildCardTile(Map<String, dynamic> card, int index) {
     final number = card['cardNumber'] ?? '';
     final last4 = number.length >= 4 ? number.substring(number.length - 4) : '????';
     final holder = card['cardHolderName'] ?? 'Unknown';
@@ -254,60 +257,93 @@ class AddSmartCardScreen extends StatefulWidget {
 
 class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
   final _formKey = GlobalKey<FormState>();
-  String cardNumber = '';
-  String expiryDate = '';
-  String cardHolderName = '';
-  String cvv = '';
+  
+  final _numberController = TextEditingController();
+  final _expiryController = TextEditingController();
+  final _holderController = TextEditingController();
+  final _cvvController = TextEditingController();
+
+  int _billingDay = 1;
+  int _monthGap = 1;
+
+  @override
+  void dispose() {
+    _numberController.dispose();
+    _expiryController.dispose();
+    _holderController.dispose();
+    _cvvController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(title: const Text('Add New Card')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            // Preview mini-card
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-                ),
-                border: Border.all(color: AppTheme.primaryBlue.withAlpha(80)),
-              ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Icon(Icons.credit_card_rounded, color: AppTheme.primaryBlue),
-                  Text(
-                    cardNumber.isEmpty ? '•••• •••• •••• ••••' : cardNumber,
-                    style: const TextStyle(color: AppTheme.white, letterSpacing: 3, fontSize: 16, fontWeight: FontWeight.w600),
+            // Preview mini-card remains same logic but using controllers
+            ValueListenableBuilder(
+              valueListenable: _numberController,
+              builder: (context, val, _) => ValueListenableBuilder(
+                valueListenable: _holderController,
+                builder: (context, holder, _) => ValueListenableBuilder(
+                  valueListenable: _expiryController,
+                  builder: (context, expiry, _) => Container(
+                    height: 180,
+                    decoration: AppTheme.cardDecoration(AppTheme.primaryBlue),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Icon(Icons.credit_card_rounded, color: Colors.white),
+                            Text(holder.text.isEmpty ? 'HOLDER NAME' : holder.text.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        Text(
+                          val.text.isEmpty ? 'XXXX-XXXX-XXXX-XXXX' : val.text,
+                          style: const TextStyle(color: Colors.white, letterSpacing: 4, fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('VISA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                            Text(expiry.text.isEmpty ? 'MM/YY' : expiry.text, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
 
             _field(
               label: 'Card Number',
               icon: Icons.credit_card_rounded,
-              hint: '16-digit card number',
+              hint: 'XXXX-XXXX-XXXX-XXXX',
+              controller: _numberController,
               keyboardType: TextInputType.number,
-              maxLength: 16,
-              onChanged: (v) => setState(() => cardNumber = v),
-              validator: (v) => (v == null || v.length < 12) ? 'Enter valid card number' : null,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                _CardNumberFormatter(),
+              ],
+              validator: (v) => (v == null || v.replaceAll('-', '').length < 16) ? 'Invalid card number' : null,
             ),
             const SizedBox(height: 16),
             _field(
               label: 'Card Holder Name',
               icon: Icons.person_rounded,
               hint: 'Full name on card',
-              onChanged: (v) => cardHolderName = v,
+              controller: _holderController,
               validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
@@ -318,9 +354,13 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                     label: 'Expiry (MM/YY)',
                     icon: Icons.calendar_today_rounded,
                     hint: '12/25',
-                    maxLength: 5,
-                    onChanged: (v) => expiryDate = v,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                    controller: _expiryController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      _ExpiryDateFormatter(),
+                    ],
+                    validator: (v) => (v == null || !v.contains('/')) ? 'Invalid expiry' : null,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -329,25 +369,75 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                     label: 'CVV',
                     icon: Icons.lock_rounded,
                     hint: '•••',
+                    controller: _cvvController,
                     maxLength: 4,
                     obscure: true,
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => cvv = v,
+                    validator: (v) => (v == null || v.length < 3) ? 'Invalid' : null,
                   ),
                 ),
               ],
             ),
+            
             const SizedBox(height: 32),
+            const Text('Billing Cycle Info', style: TextStyle(color: AppTheme.whiteSecondary, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _billingDay,
+                    decoration: const InputDecoration(labelText: 'Billing Day'),
+                    dropdownColor: AppTheme.surfaceElevated,
+                    items: List.generate(31, (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}'))),
+                    onChanged: (v) => setState(() => _billingDay = v!),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _monthGap,
+                    decoration: const InputDecoration(labelText: 'Cycle (Months)'),
+                    dropdownColor: AppTheme.surfaceElevated,
+                    items: [1, 2, 3, 6, 12].map((m) => DropdownMenuItem(value: m, child: Text('$m Month${m > 1 ? 's' : ''}'))).toList(),
+                    onChanged: (v) => setState(() => _monthGap = v!),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 40),
             ElevatedButton.icon(
-              icon: const Icon(Icons.add_card_rounded),
-              label: const Text('Save Card'),
-              onPressed: () {
+              icon: const Icon(Icons.add_card_rounded, color: Colors.black),
+              label: const Text('SAVE CARD'),
+              onPressed: () async {
                 if (_formKey.currentState!.validate()) {
+                  final cardId = math.Random().nextInt(1000000);
+                  
+                  // Schedule notifications
+                  await NotificationService.scheduleBillingReminder(
+                    id: cardId,
+                    title: 'Bill Generation Reminder',
+                    body: 'Your ${_numberController.text.substring(_numberController.text.length - 4)} card bill will be generated tomorrow!',
+                    dayOfMonth: _billingDay,
+                    oneDayBefore: true,
+                  );
+                  await NotificationService.scheduleBillingReminder(
+                    id: cardId + 1,
+                    title: 'Bill Generated Today',
+                    body: 'Your ${_numberController.text.substring(_numberController.text.length - 4)} card bill is generated today.',
+                    dayOfMonth: _billingDay,
+                    oneDayBefore: false,
+                  );
+
                   Navigator.pop(context, {
-                    'cardNumber': cardNumber,
-                    'cardHolderName': cardHolderName,
-                    'expiryDate': expiryDate.isEmpty ? '12/99' : expiryDate,
-                    'cvv': cvv,
+                    'cardNumber': _numberController.text.replaceAll('-', ''),
+                    'cardHolderName': _holderController.text,
+                    'expiryDate': _expiryController.text,
+                    'cvv': _cvvController.text,
+                    'bankName': 'Manual Card',
+                    'billingDay': _billingDay,
+                    'monthGap': _monthGap,
                   });
                 }
               },
@@ -362,13 +452,15 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
     required String label,
     required IconData icon,
     required String hint,
-    required Function(String) onChanged,
+    required TextEditingController controller,
     String? Function(String?)? validator,
     TextInputType? keyboardType,
     int? maxLength,
     bool obscure = false,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
+      controller: controller,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -378,9 +470,52 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
       keyboardType: keyboardType,
       maxLength: maxLength,
       obscureText: obscure,
-      onChanged: onChanged,
       validator: validator,
+      inputFormatters: inputFormatters,
       style: const TextStyle(color: AppTheme.white),
     );
   }
 }
+
+class _CardNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    var text = newValue.text;
+    if (newValue.selection.baseOffset == 0) return newValue;
+    var buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      var nonZeroIndex = i + 1;
+      if (nonZeroIndex % 4 == 0 && nonZeroIndex != text.length) {
+        buffer.write('-');
+      }
+    }
+    var string = buffer.toString();
+    return newValue.copyWith(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
+  }
+}
+
+class _ExpiryDateFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    var text = newValue.text;
+    if (newValue.selection.baseOffset == 0) return newValue;
+    var buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      var nonZeroIndex = i + 1;
+      if (nonZeroIndex % 2 == 0 && nonZeroIndex != text.length) {
+        buffer.write('/');
+      }
+    }
+    var string = buffer.toString();
+    return newValue.copyWith(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
+  }
+}
+

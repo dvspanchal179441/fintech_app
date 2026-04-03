@@ -178,7 +178,7 @@ class TransactionDetailScreen extends StatefulWidget {
 class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   late TextEditingController _noteController;
   late TextEditingController _amountController;
-  List<Map<String, String>> _availableCards = [];
+  List<Map<String, dynamic>> _availableCards = [];
   String? _selectedCardId;
   bool _loadingCards = true;
 
@@ -274,11 +274,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     isExpanded: true,
                     dropdownColor: AppTheme.surfaceElevated,
                     hint: const Text("Select Card", style: TextStyle(color: AppTheme.whiteTertiary)),
-                    items: _availableCards.map((card) {
-                      final number = card['cardNumber'] ?? '';
+                    items: _availableCards.map<DropdownMenuItem<String>>((card) {
+                      final number = card['cardNumber']?.toString() ?? '';
                       final last4 = number.length >= 4 ? number.substring(number.length - 4) : '****';
-                      final bank = card['bankName'] ?? 'Bank';
-                      return DropdownMenuItem(
+                      final bank = card['bankName']?.toString() ?? 'Bank';
+                      return DropdownMenuItem<String>(
                         value: number,
                         child: Text("$bank ending in $last4", style: const TextStyle(color: AppTheme.white, fontSize: 14)),
                       );

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/local_storage_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import 'dart:math' as math;
 
 class UtilityBillersScreen extends StatefulWidget {
   const UtilityBillersScreen({super.key});
@@ -31,6 +33,8 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
         name: e['name'] ?? '',
         type: e['type'] ?? '',
         accountNumber: e['accountNumber'] ?? '',
+        billingDay: e['billingDay'] != null ? int.tryParse(e['billingDay'].toString()) : null,
+        monthGap: e['monthGap'] != null ? int.tryParse(e['monthGap'].toString()) : null,
       )).toList();
 
       _allBills = savedBills.map((e) => Bill(
@@ -53,6 +57,8 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
       'name': e.name,
       'type': e.type,
       'accountNumber': e.accountNumber,
+      'billingDay': e.billingDay,
+      'monthGap': e.monthGap,
     }).toList();
     await LocalStorageService.saveUtilityBillers(list);
   }
@@ -61,6 +67,8 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
     String name = '';
     String type = 'Electricity';
     String account = '';
+    int billingDay = 1;
+    int monthGap = 1;
 
     showModalBottomSheet(
       context: context,
@@ -96,17 +104,64 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
               onChanged: (v) => account = v,
             ),
             const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            const Text('Billing Cycle Info', style: TextStyle(color: AppTheme.whiteSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: billingDay,
+                    dropdownColor: AppTheme.surfaceElevated,
+                    decoration: const InputDecoration(labelText: 'Billing Day'),
+                    items: List.generate(31, (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}', style: const TextStyle(color: AppTheme.white)))),
+                    onChanged: (v) => billingDay = v ?? billingDay,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: monthGap,
+                    dropdownColor: AppTheme.surfaceElevated,
+                    decoration: const InputDecoration(labelText: 'Every X Month(s)'),
+                    items: [1, 2, 3, 6, 12].map((m) => DropdownMenuItem(value: m, child: Text('$m', style: const TextStyle(color: AppTheme.white)))).toList(),
+                    onChanged: (v) => monthGap = v ?? monthGap,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (name.isNotEmpty && account.isNotEmpty) {
+                    final billerId = 'UB-${DateTime.now().millisecondsSinceEpoch}';
+                    
+                    // Schedule reminders
+                    await NotificationService.scheduleBillingReminder(
+                      id: math.Random().nextInt(1000000),
+                      title: 'Utility Bill Reminder',
+                      body: 'Your $name ($type) bill will be generated tomorrow!',
+                      dayOfMonth: billingDay,
+                      oneDayBefore: true,
+                    );
+                    await NotificationService.scheduleBillingReminder(
+                      id: math.Random().nextInt(1000000),
+                      title: 'Utility Bill Generation',
+                      body: 'Your $name ($type) bill should be generated today.',
+                      dayOfMonth: billingDay,
+                      oneDayBefore: false,
+                    );
+
                     setState(() {
                       _billers.add(UtilityBiller(
-                        id: 'UB-${DateTime.now().millisecondsSinceEpoch}',
+                        id: billerId,
                         name: name,
                         type: type,
                         accountNumber: account,
+                        billingDay: billingDay,
+                        monthGap: monthGap,
                       ));
                     });
                     _saveBillers();

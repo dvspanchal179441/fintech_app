@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 
 class SmartCardDetailScreen extends StatefulWidget {
-  final Map<String, String> card;
+  final Map<String, dynamic> card;
   final VoidCallback onDelete;
 
   const SmartCardDetailScreen({

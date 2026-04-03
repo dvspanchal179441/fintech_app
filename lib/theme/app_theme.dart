@@ -15,6 +15,35 @@ class AppTheme {
   static const Color danger = Color(0xFFE05252);
   static const Color divider = Color(0xFF2A2A2A);
 
+  // Bank Specific Colors
+  static const Color hdfcBlue = Color(0xFF004D94);
+  static const Color iciciOrange = Color(0xFFF37021);
+  static const Color sbiBlue = Color(0xFF285DAA);
+  static const Color sbiYellow = Color(0xFFFFCC00);
+
+  // Premium UI Decorations
+  static BoxDecoration get glassDecoration => BoxDecoration(
+    color: Colors.white.withAlpha(20),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.white.withAlpha(30), width: 1),
+  );
+
+  static BoxDecoration cardDecoration(Color baseColor) => BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [baseColor, Color.lerp(baseColor, Colors.black, 0.4) ?? baseColor],
+    ),
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withAlpha(100),
+        blurRadius: 15,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
+
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,

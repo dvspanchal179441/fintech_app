@@ -200,6 +200,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
           const SizedBox(height: 32),
+          _sectionLabel('🤖 INTELLIGENCE'),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.divider),
+            ),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
+                  secondary: const Icon(Icons.auto_awesome_rounded, color: AppTheme.primaryBlue),
+                  title: const Text('SMS Bill Discovery', style: TextStyle(color: AppTheme.white, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Auto-detect bills from bank SMS alerts', style: TextStyle(color: AppTheme.whiteSecondary, fontSize: 12)),
+                  value: true, 
+                  onChanged: (v) {},
+                ),
+                const Divider(height: 1, color: AppTheme.divider),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
+                  secondary: const Icon(Icons.verified_user_rounded, color: AppTheme.primaryBlue),
+                  title: const Text('Payment Verification', style: TextStyle(color: AppTheme.white, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Auto-match UPI payments to pending bills', style: TextStyle(color: AppTheme.whiteSecondary, fontSize: 12)),
+                  value: true,
+                  onChanged: (v) {},
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
           _sectionLabel('ℹ️ ABOUT'),
           const SizedBox(height: 12),
           _settingsTile(
@@ -210,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _settingsTile(
             icon: Icons.lock_outline_rounded,
             title: 'Data Privacy',
-            subtitle: 'No data is shared with any third party without your consent',
+            subtitle: 'Offline-first. No data is shared with any third party.',
           ),
         ],
       ),

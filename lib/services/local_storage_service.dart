@@ -9,19 +9,21 @@ class LocalStorageService {
   static const _utilityBillersKey = 'utility_billers';
   static const _backupEnabledKey = 'backup_enabled';
   static const _lastBackupKey = 'last_backup_time';
+  static const _notesKey = 'notes';
+  static const _tasksKey = 'tasks';
 
   // ── Smart Cards ──────────────────────────────────────────
-  static Future<void> saveCards(List<Map<String, String>> cards) async {
+  static Future<void> saveCards(List<Map<String, dynamic>> cards) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_cardsKey, jsonEncode(cards));
   }
 
-  static Future<List<Map<String, String>>> loadCards() async {
+  static Future<List<Map<String, dynamic>>> loadCards() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_cardsKey);
     if (raw == null) return [];
     final list = jsonDecode(raw) as List;
-    return list.map((e) => Map<String, String>.from(e as Map)).toList();
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   // ── Gift Cards ────────────────────────────────────────────
@@ -67,17 +69,17 @@ class LocalStorageService {
   }
 
   // ── Utility Billers ──────────────────────────────────────
-  static Future<void> saveUtilityBillers(List<Map<String, String>> billers) async {
+  static Future<void> saveUtilityBillers(List<Map<String, dynamic>> billers) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_utilityBillersKey, jsonEncode(billers));
   }
 
-  static Future<List<Map<String, String>>> loadUtilityBillers() async {
+  static Future<List<Map<String, dynamic>>> loadUtilityBillers() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_utilityBillersKey);
     if (raw == null) return [];
     final list = jsonDecode(raw) as List;
-    return list.map((e) => Map<String, String>.from(e as Map)).toList();
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   // ── Backup Settings ───────────────────────────────────────
@@ -101,6 +103,34 @@ class LocalStorageService {
     await prefs.setString(_lastBackupKey, time);
   }
 
+  // ── Notes ─────────────────────────────────────────────────
+  static Future<void> saveNotes(List<Map<String, dynamic>> notes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_notesKey, jsonEncode(notes));
+  }
+
+  static Future<List<Map<String, dynamic>>> loadNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_notesKey);
+    if (raw == null) return [];
+    final list = jsonDecode(raw) as List;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  // ── Tasks ─────────────────────────────────────────────────
+  static Future<void> saveTasks(List<Map<String, dynamic>> tasks) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tasksKey, jsonEncode(tasks));
+  }
+
+  static Future<List<Map<String, dynamic>>> loadTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_tasksKey);
+    if (raw == null) return [];
+    final list = jsonDecode(raw) as List;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   // ── Full Export (for Drive backup) ────────────────────────
   static Future<String> exportAllAsJson() async {
     final cards = await loadCards();
@@ -108,12 +138,16 @@ class LocalStorageService {
     final transactions = await loadTransactions();
     final bills = await loadBills();
     final utilityBillers = await loadUtilityBillers();
+    final notes = await loadNotes();
+    final tasks = await loadTasks();
     return jsonEncode({
       'smart_cards': cards,
       'gift_cards': giftCards,
       'transactions': transactions,
       'bills': bills,
       'utility_billers': utilityBillers,
+      'notes': notes,
+      'tasks': tasks,
       'exported_at': DateTime.now().toIso8601String(),
     });
   }
