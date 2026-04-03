@@ -84,7 +84,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: type,
+              initialValue: type,
               dropdownColor: AppTheme.surfaceElevated,
               items: ['Electricity', 'Water', 'Gas', 'Internet', 'Mobile'].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(color: AppTheme.white)))).toList(),
               onChanged: (v) => type = v ?? type,

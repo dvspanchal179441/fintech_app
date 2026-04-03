@@ -106,13 +106,12 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                         child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
                       ),
                       onDismissed: (_) async {
+                        final messenger = ScaffoldMessenger.of(context);
                         setState(() {
                           _transactionsList.removeAt(index);
                         });
                         await _saveList();
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaction deleted')));
-                        }
+                        messenger.showSnackBar(const SnackBar(content: Text('Transaction deleted')));
                       },
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),

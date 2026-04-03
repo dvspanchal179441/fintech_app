@@ -99,13 +99,12 @@ class _GiftCardVaultScreenState extends State<GiftCardVaultScreen> {
                         child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
                       ),
                       onDismissed: (_) async {
+                        final messenger = ScaffoldMessenger.of(context);
                         setState(() {
                           _vault.removeAt(index);
                         });
                         await _saveVault();
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gift card removed')));
-                        }
+                        messenger.showSnackBar(const SnackBar(content: Text('Gift card removed')));
                       },
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),

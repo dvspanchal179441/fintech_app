@@ -293,7 +293,7 @@ class _DashboardHostState extends State<DashboardHost> {
               Text('Add ${isUtility ? 'Utility' : 'Card'} Bill', style: const TextStyle(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               DropdownButtonFormField<dynamic>(
-                value: selectedSource,
+                initialValue: selectedSource,
                 dropdownColor: AppTheme.surfaceElevated,
                 items: sources.map((s) {
                   String label = isUtility ? s['name'] : "${s['bankName']} Card (**${(s['cardNumber'] as String).substring((s['cardNumber'] as String).length - 4)})";
