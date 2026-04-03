@@ -3,6 +3,7 @@ import 'screens/smart_card_screen.dart';
 import 'screens/gift_card_vault_screen.dart';
 import 'screens/transaction_detail_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/utility_billers_screen.dart';
 import 'models/models.dart';
 import 'theme/app_theme.dart';
 import 'services/local_storage_service.dart';
@@ -40,12 +41,7 @@ class _DashboardHostState extends State<DashboardHost> {
 
   List<Bill> _bills = [];
 
-  static final List<Bill> _defaultBills = [
-    Bill(id: "B-1001", amount: 1540.50, isPaid: false, dueDate: DateTime.now().add(const Duration(days: 2))),
-    Bill(id: "B-1002", amount: 499.00, isPaid: false, dueDate: DateTime.now().add(const Duration(days: 5))),
-    Bill(id: "B-1003", amount: 8900.00, isPaid: true, dueDate: DateTime.now().subtract(const Duration(days: 1))),
-    Bill(id: "B-1004", amount: 120.00, isPaid: false, dueDate: DateTime.now().add(const Duration(days: 12))),
-  ];
+  static final List<Bill> _defaultBills = [];
 
   @override
   void initState() {
@@ -62,6 +58,9 @@ class _DashboardHostState extends State<DashboardHost> {
           amount: (m['amount'] as num).toDouble(),
           isPaid: m['isPaid'] as bool,
           dueDate: DateTime.parse(m['dueDate'] as String),
+          cardId: m['cardId'] as String?,
+          billerId: m['billerId'] as String?,
+          billerName: m['billerName'] as String?,
         )).toList();
       } else {
         _bills = List.from(_defaultBills);
@@ -77,6 +76,9 @@ class _DashboardHostState extends State<DashboardHost> {
         'amount': b.amount,
         'isPaid': b.isPaid,
         'dueDate': b.dueDate.toIso8601String(),
+        'cardId': b.cardId,
+        'billerId': b.billerId,
+        'billerName': b.billerName,
       }).toList(),
     );
   }
@@ -112,7 +114,7 @@ class _DashboardHostState extends State<DashboardHost> {
       ),
       drawer: _buildDrawer(context),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.gold))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
           : Column(
               children: [
                 // ── Summary banner ─────────────────────────────
@@ -159,7 +161,204 @@ class _DashboardHostState extends State<DashboardHost> {
                 ),
               ],
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showQuickAdd(context),
+        backgroundColor: AppTheme.primaryBlue,
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+      ),
     );
+  }
+
+  void _showQuickAdd(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceElevated,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Quick Add Bill', style: TextStyle(color: AppTheme.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+            _quickAddOption(
+              ctx,
+              icon: Icons.credit_card_rounded,
+              title: 'Credit Card Bill',
+              subtitle: 'Add bill for an existing card',
+              onTap: () {
+                _addBillFlow(ctx, isUtility: false);
+              },
+            ),
+            const SizedBox(height: 12),
+            _quickAddOption(
+              ctx,
+              icon: Icons.receipt_long_rounded,
+              title: 'Utility Bill',
+              subtitle: 'Electricity, Water, WiFi etc.',
+              onTap: () {
+                _addBillFlow(ctx, isUtility: true);
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickAddOption(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.divider),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(backgroundColor: AppTheme.primaryBlue.withAlpha(20), child: Icon(icon, color: AppTheme.primaryBlue)),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: const TextStyle(color: AppTheme.whiteTertiary, fontSize: 12)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.whiteTertiary, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addBillFlow(BuildContext context, {required bool isUtility}) async {
+    Navigator.pop(context); // close bottom sheet
+
+    // Load sources (cards or billers)
+    final messenger = ScaffoldMessenger.of(context);
+    List<dynamic> sources = [];
+    if (isUtility) {
+      final saved = await LocalStorageService.loadUtilityBillers();
+      sources = saved;
+    } else {
+      final saved = await LocalStorageService.loadCards();
+      sources = saved;
+    }
+
+    if (sources.isEmpty) {
+      if (context.mounted) {
+        messenger.showSnackBar(SnackBar(content: Text("No ${isUtility ? 'Billers' : 'Cards'} found. Please add one first.")));
+        if (isUtility) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const UtilityBillersScreen()));
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const SmartCardScreen()));
+        }
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    // Show Selection Dialog
+    dynamic selectedSource;
+    double amount = 0;
+    DateTime dueDate = DateTime.now().add(const Duration(days: 7));
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 24, right: 24, top: 24),
+          decoration: const BoxDecoration(
+            color: AppTheme.surfaceElevated,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Add ${isUtility ? 'Utility' : 'Card'} Bill', style: const TextStyle(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<dynamic>(
+                value: selectedSource,
+                dropdownColor: AppTheme.surfaceElevated,
+                items: sources.map((s) {
+                  String label = isUtility ? s['name'] : "${s['bankName']} Card (**${(s['cardNumber'] as String).substring((s['cardNumber'] as String).length - 4)})";
+                  return DropdownMenuItem(value: s, child: Text(label, style: const TextStyle(color: AppTheme.white, fontSize: 13)));
+                }).toList(),
+                onChanged: (v) => setModalState(() => selectedSource = v),
+                decoration: InputDecoration(labelText: 'Select ${isUtility ? 'Biller' : 'Card'}'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: AppTheme.white),
+                decoration: const InputDecoration(labelText: 'Bill Amount', prefixText: '₹ '),
+                onChanged: (v) => amount = double.tryParse(v) ?? 0,
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text("Due Date", style: TextStyle(color: AppTheme.whiteSecondary, fontSize: 12)),
+                subtitle: Text("${dueDate.day}/${dueDate.month}/${dueDate.year}", style: const TextStyle(color: AppTheme.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                trailing: const Icon(Icons.calendar_today_rounded, color: AppTheme.primaryBlue),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: dueDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) setModalState(() => dueDate = picked);
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (selectedSource != null && amount > 0) {
+                      Navigator.pop(ctx, true);
+                    }
+                  },
+                  child: const Text('CREATE BILL'),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    ).then((confirmed) async {
+      if (confirmed == true) {
+        setState(() {
+          final newBill = Bill(
+            id: "B-${DateTime.now().millisecondsSinceEpoch}",
+            amount: amount,
+            isPaid: false,
+            dueDate: dueDate,
+            billerId: isUtility ? selectedSource['id'] : null,
+            billerName: isUtility ? selectedSource['name'] : selectedSource['bankName'],
+            cardId: isUtility ? null : selectedSource['cardNumber'],
+          );
+          _bills.insert(0, newBill);
+        });
+        await _saveBills();
+      }
+    });
   }
 
   Widget _buildSummaryBanner() {
@@ -169,16 +368,16 @@ class _DashboardHostState extends State<DashboardHost> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1A1600), Color(0xFF2A2200)],
+          colors: [Color(0xFF001A33), Color(0xFF003366)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.gold.withAlpha(60)),
+        border: Border.all(color: AppTheme.primaryBlue.withAlpha(60)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.gold, size: 36),
+          const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.primaryBlue, size: 36),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,7 +385,7 @@ class _DashboardHostState extends State<DashboardHost> {
               const Text('Total Outstanding', style: TextStyle(color: AppTheme.whiteTertiary, fontSize: 12, letterSpacing: 0.5)),
               Text(
                 '₹${totalDue.toStringAsFixed(2)}',
-                style: const TextStyle(color: AppTheme.gold, fontSize: 26, fontWeight: FontWeight.w800),
+                style: const TextStyle(color: AppTheme.primaryBlue, fontSize: 26, fontWeight: FontWeight.w800),
               ),
             ],
           ),
@@ -249,7 +448,10 @@ class _DashboardHostState extends State<DashboardHost> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(bill.id, style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                  Text(
+                    bill.billerName ?? bill.id,
+                    style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -294,10 +496,10 @@ class _DashboardHostState extends State<DashboardHost> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppTheme.gold,
+                        color: AppTheme.primaryBlue,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Text('PAY', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 12)),
+                      child: const Text('PAY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
                     ),
                   )
                 else
@@ -353,10 +555,10 @@ class _DashboardHostState extends State<DashboardHost> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: AppTheme.gold,
+                      color: AppTheme.primaryBlue,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.black, size: 28),
+                    child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 28),
                   ),
                   const SizedBox(height: 12),
                   const Text('Fintech Vault', style: TextStyle(color: AppTheme.white, fontWeight: FontWeight.w800, fontSize: 20)),
@@ -395,6 +597,16 @@ class _DashboardHostState extends State<DashboardHost> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const TransactionsListScreen()));
+              },
+            ),
+            _drawerItem(
+              context,
+              icon: Icons.electrical_services_rounded,
+              label: 'Utility Billers',
+              subtitle: 'Manage your service billers',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const UtilityBillersScreen()));
               },
             ),
             _drawerItem(
@@ -442,10 +654,10 @@ class _DashboardHostState extends State<DashboardHost> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: AppTheme.gold.withAlpha(25),
+          color: AppTheme.primaryBlue.withAlpha(25),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: AppTheme.gold, size: 20),
+        child: Icon(icon, color: AppTheme.primaryBlue, size: 20),
       ),
       title: Text(label, style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.w600, fontSize: 14)),
       subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.whiteTertiary, fontSize: 11)),

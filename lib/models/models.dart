@@ -4,6 +4,9 @@ class Bill {
   bool isPaid;
   DateTime dueDate;
   DateTime? generationDate;
+  String? cardId;   // Reference to SmartCard
+  String? billerId; // Reference to UtilityBiller
+  String? billerName; // For quick display
   
   Bill({
     required this.id,
@@ -11,6 +14,23 @@ class Bill {
     required this.isPaid,
     required this.dueDate,
     this.generationDate,
+    this.cardId,
+    this.billerId,
+    this.billerName,
+  });
+}
+
+class UtilityBiller {
+  String id;
+  String name;
+  String type; // Electricity, Water, WiFi, Gas, etc.
+  String accountNumber;
+  
+  UtilityBiller({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.accountNumber,
   });
 }
 
@@ -36,10 +56,14 @@ class ExtendedTransaction {
   String transactionId;
   String? note; // Manual sticky notes
   String? attachmentPath; // Local path to Physical receipt image / photos
+  String? cardId; // Associated card/account
+  double? amount; // Storing amount for detail display
   
   ExtendedTransaction({
     required this.transactionId,
     this.note,
     this.attachmentPath,
+    this.cardId,
+    this.amount,
   });
 }

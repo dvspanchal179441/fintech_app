@@ -282,10 +282,10 @@ class _SmartCardDetailScreenState extends State<SmartCardDetailScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.gold.withAlpha(25),
+              color: AppTheme.primaryBlue.withAlpha(25),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AppTheme.gold, size: 20),
+            child: Icon(icon, color: AppTheme.primaryBlue, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(

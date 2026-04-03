@@ -145,7 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 SwitchListTile(
                   contentPadding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
-                  secondary: const Icon(Icons.cloud_sync_rounded, color: AppTheme.gold),
+                  secondary: const Icon(Icons.cloud_sync_rounded, color: AppTheme.primaryBlue),
                   title: const Text('Enable Drive Backup', style: TextStyle(color: AppTheme.white, fontWeight: FontWeight.w600)),
                   subtitle: const Text('Encrypted backup to your Google Drive', style: TextStyle(color: AppTheme.whiteSecondary, fontSize: 12)),
                   value: _backupEnabled,
@@ -162,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   else ...[
                     ListTile(
                       contentPadding: const EdgeInsets.fromLTRB(20, 4, 16, 4),
-                      leading: const Icon(Icons.account_circle_rounded, color: AppTheme.gold),
+                      leading: const Icon(Icons.account_circle_rounded, color: AppTheme.primaryBlue),
                       title: Text(
                         GoogleDriveService.currentUser?.email ?? 'Connected',
                         style: const TextStyle(color: AppTheme.white, fontSize: 14),
@@ -196,7 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (_loading)
             const Padding(
               padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator(color: AppTheme.gold)),
+              child: Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue)),
             ),
 
           const SizedBox(height: 32),
@@ -242,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        leading: Icon(icon, color: AppTheme.gold),
+        leading: Icon(icon, color: AppTheme.primaryBlue),
         title: Text(title, style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.whiteSecondary, fontSize: 12)),
         trailing: trailing,
@@ -253,8 +253,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _actionTile({required IconData icon, required String label, VoidCallback? onTap}) {
     return ListTile(
       contentPadding: const EdgeInsets.fromLTRB(20, 4, 16, 4),
-      leading: Icon(icon, color: AppTheme.gold),
-      title: Text(label, style: const TextStyle(color: AppTheme.gold, fontWeight: FontWeight.w600)),
+      leading: Icon(icon, color: AppTheme.primaryBlue),
+      title: Text(label, style: const TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.w600)),
       trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.whiteTertiary, size: 14),
       onTap: onTap,
     );

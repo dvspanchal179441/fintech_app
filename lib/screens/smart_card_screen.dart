@@ -23,16 +23,7 @@ class _SmartCardScreenState extends State<SmartCardScreen> {
   Future<void> _loadCards() async {
     final saved = await LocalStorageService.loadCards();
     setState(() {
-      _cards = saved.isNotEmpty
-          ? saved
-          : [
-              {
-                'cardNumber': '4111222233334444',
-                'cardHolderName': 'John Doe',
-                'expiryDate': '12/25',
-                'cvv': '123',
-              }
-            ];
+      _cards = saved;
       _loading = false;
     });
   }
@@ -89,7 +80,7 @@ class _SmartCardScreenState extends State<SmartCardScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.gold))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue))
           : _cards.isEmpty
               ? _emptyState()
               : ListView.builder(
@@ -285,14 +276,14 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                 gradient: const LinearGradient(
                   colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
                 ),
-                border: Border.all(color: AppTheme.gold.withAlpha(80)),
+                border: Border.all(color: AppTheme.primaryBlue.withAlpha(80)),
               ),
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.credit_card_rounded, color: AppTheme.gold),
+                  const Icon(Icons.credit_card_rounded, color: AppTheme.primaryBlue),
                   Text(
                     cardNumber.isEmpty ? '•••• •••• •••• ••••' : cardNumber,
                     style: const TextStyle(color: AppTheme.white, letterSpacing: 3, fontSize: 16, fontWeight: FontWeight.w600),
@@ -381,7 +372,7 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: AppTheme.gold, size: 20),
+        prefixIcon: Icon(icon, color: AppTheme.primaryBlue, size: 20),
         counterText: '',
       ),
       keyboardType: keyboardType,

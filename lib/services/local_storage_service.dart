@@ -6,6 +6,7 @@ class LocalStorageService {
   static const _giftCardsKey = 'gift_cards';
   static const _transactionsKey = 'transactions';
   static const _billsKey = 'bills';
+  static const _utilityBillersKey = 'utility_billers';
   static const _backupEnabledKey = 'backup_enabled';
   static const _lastBackupKey = 'last_backup_time';
 
@@ -65,6 +66,20 @@ class LocalStorageService {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  // ── Utility Billers ──────────────────────────────────────
+  static Future<void> saveUtilityBillers(List<Map<String, String>> billers) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_utilityBillersKey, jsonEncode(billers));
+  }
+
+  static Future<List<Map<String, String>>> loadUtilityBillers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_utilityBillersKey);
+    if (raw == null) return [];
+    final list = jsonDecode(raw) as List;
+    return list.map((e) => Map<String, String>.from(e as Map)).toList();
+  }
+
   // ── Backup Settings ───────────────────────────────────────
   static Future<bool> getBackupEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -92,11 +107,13 @@ class LocalStorageService {
     final giftCards = await loadGiftCards();
     final transactions = await loadTransactions();
     final bills = await loadBills();
+    final utilityBillers = await loadUtilityBillers();
     return jsonEncode({
       'smart_cards': cards,
       'gift_cards': giftCards,
       'transactions': transactions,
       'bills': bills,
+      'utility_billers': utilityBillers,
       'exported_at': DateTime.now().toIso8601String(),
     });
   }

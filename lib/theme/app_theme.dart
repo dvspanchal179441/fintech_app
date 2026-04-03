@@ -6,8 +6,8 @@ class AppTheme {
   static const Color background = Color(0xFF0D0D0D);
   static const Color surface = Color(0xFF1A1A1A);
   static const Color surfaceElevated = Color(0xFF242424);
-  static const Color gold = Color(0xFFC9A84C);
-  static const Color goldLight = Color(0xFFE8C97A);
+  static const Color primaryBlue = Color(0xFF007AFF);
+  static const Color primaryBlueLight = Color(0xFF47A1FF);
   static const Color white = Color(0xFFFFFFFF);
   static const Color whiteSecondary = Color(0xFFBBBBBB);
   static const Color whiteTertiary = Color(0xFF666666);
@@ -20,8 +20,8 @@ class AppTheme {
       brightness: Brightness.dark,
       useMaterial3: true,
       colorScheme: const ColorScheme.dark(
-        primary: gold,
-        secondary: goldLight,
+        primary: primaryBlue,
+        secondary: primaryBlueLight,
         surface: surface,
         onPrimary: Colors.black,
         onSurface: white,
@@ -48,7 +48,7 @@ class AppTheme {
           letterSpacing: 0.5,
         ),
         iconTheme: const IconThemeData(color: white),
-        actionsIconTheme: const IconThemeData(color: gold),
+        actionsIconTheme: const IconThemeData(color: primaryBlue),
       ),
       drawerTheme: const DrawerThemeData(
         backgroundColor: surface,
@@ -57,7 +57,7 @@ class AppTheme {
       cardColor: AppTheme.surface,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: gold,
+          backgroundColor: primaryBlue,
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -67,8 +67,8 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: gold,
-          side: const BorderSide(color: gold, width: 1.5),
+          foregroundColor: primaryBlue,
+          side: const BorderSide(color: primaryBlue, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
@@ -89,19 +89,19 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: gold, width: 1.5),
+          borderSide: const BorderSide(color: primaryBlue, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       ),
       listTileTheme: const ListTileThemeData(
-        iconColor: gold,
+        iconColor: primaryBlue,
         textColor: white,
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? gold : whiteTertiary),
-        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? gold.withAlpha(80) : surfaceElevated),
+        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? primaryBlue : whiteTertiary),
+        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? primaryBlue.withAlpha(80) : surfaceElevated),
       ),
-      iconTheme: const IconThemeData(color: gold),
+      iconTheme: const IconThemeData(color: primaryBlue),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surfaceElevated,
         contentTextStyle: GoogleFonts.inter(color: white),
@@ -117,7 +117,7 @@ class AppTheme {
           backgroundColor: surface,
           foregroundColor: whiteSecondary,
           selectedForegroundColor: Colors.black,
-          selectedBackgroundColor: gold,
+          selectedBackgroundColor: primaryBlue,
           side: const BorderSide(color: Color(0xFF2A2A2A)),
         ),
       ),
