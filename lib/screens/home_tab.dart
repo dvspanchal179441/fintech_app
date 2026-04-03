@@ -332,7 +332,7 @@ class _HomeTabState extends State<HomeTab> {
     final Map<String, Map<String, double>> history = {};
     for (var bill in _bills) {
         final key = "${bill.dueDate.year}";
-        final monthKey = "${_getMonthName(bill.dueDate.month)}";
+        final monthKey = _getMonthName(bill.dueDate.month);
         history[key] ??= {};
         history[key]![monthKey] = (history[key]![monthKey] ?? 0) + bill.amount;
     }

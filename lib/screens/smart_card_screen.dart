@@ -386,7 +386,7 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: _billingDay,
+                    initialValue: _billingDay,
                     decoration: const InputDecoration(labelText: 'Billing Day'),
                     dropdownColor: AppTheme.surfaceElevated,
                     items: List.generate(31, (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}'))),
@@ -396,7 +396,7 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: _monthGap,
+                    initialValue: _monthGap,
                     decoration: const InputDecoration(labelText: 'Cycle (Months)'),
                     dropdownColor: AppTheme.surfaceElevated,
                     items: [1, 2, 3, 6, 12].map((m) => DropdownMenuItem(value: m, child: Text('$m Month${m > 1 ? 's' : ''}'))).toList(),
@@ -430,6 +430,7 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                     oneDayBefore: false,
                   );
 
+                  if (!mounted) return;
                   Navigator.pop(context, {
                     'cardNumber': _numberController.text.replaceAll('-', ''),
                     'cardHolderName': _holderController.text,

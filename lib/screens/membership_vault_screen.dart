@@ -10,7 +10,7 @@ class MembershipVaultScreen extends StatefulWidget {
 }
 
 class _MembershipVaultScreenState extends State<MembershipVaultScreen> {
-  List<Map<String, String>> _memberships = [];
+  final List<Map<String, String>> _memberships = [];
   bool _loading = true;
 
   @override

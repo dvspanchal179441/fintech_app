@@ -111,7 +111,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: billingDay,
+                    initialValue: billingDay,
                     dropdownColor: AppTheme.surfaceElevated,
                     decoration: const InputDecoration(labelText: 'Billing Day'),
                     items: List.generate(31, (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}', style: const TextStyle(color: AppTheme.white)))),
@@ -121,7 +121,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: monthGap,
+                    initialValue: monthGap,
                     dropdownColor: AppTheme.surfaceElevated,
                     decoration: const InputDecoration(labelText: 'Every X Month(s)'),
                     items: [1, 2, 3, 6, 12].map((m) => DropdownMenuItem(value: m, child: Text('$m', style: const TextStyle(color: AppTheme.white)))).toList(),
@@ -165,6 +165,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
                       ));
                     });
                     _saveBillers();
+                    if (!mounted) return;
                     Navigator.pop(ctx);
                   }
                 },

@@ -61,6 +61,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 onTap: () async {
                   final date = await showDatePicker(context: context, initialDate: scheduled, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
                   if (date != null) {
+                    if (!mounted) return;
                     final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(scheduled));
                     if (time != null) {
                       setModalState(() => scheduled = DateTime(date.year, date.month, date.day, time.hour, time.minute));
