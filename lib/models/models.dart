@@ -31,6 +31,7 @@ class UtilityBiller {
   String accountNumber;
   int? billingDay;
   int? monthGap;
+  bool notificationEnabled;
   
   UtilityBiller({
     required this.id,
@@ -39,6 +40,7 @@ class UtilityBiller {
     required this.accountNumber,
     this.billingDay,
     this.monthGap,
+    this.notificationEnabled = true,
   });
 }
 

@@ -35,6 +35,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
         accountNumber: e['accountNumber'] ?? '',
         billingDay: e['billingDay'] != null ? int.tryParse(e['billingDay'].toString()) : null,
         monthGap: e['monthGap'] != null ? int.tryParse(e['monthGap'].toString()) : null,
+        notificationEnabled: e['notificationEnabled'] ?? true,
       )).toList();
 
       _allBills = savedBills.map((e) => Bill(
@@ -59,6 +60,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
       'accountNumber': e.accountNumber,
       'billingDay': e.billingDay,
       'monthGap': e.monthGap,
+      'notificationEnabled': e.notificationEnabled,
     }).toList();
     await LocalStorageService.saveUtilityBillers(list);
   }
@@ -137,22 +139,32 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
                 onPressed: () async {
                   if (name.isNotEmpty && account.isNotEmpty) {
                     final billerId = 'UB-${DateTime.now().millisecondsSinceEpoch}';
-                    
-                    // Schedule reminders
-                    await NotificationService.scheduleBillingReminder(
-                      id: math.Random().nextInt(1000000),
-                      title: 'Utility Bill Reminder',
-                      body: 'Your $name ($type) bill will be generated tomorrow!',
-                      dayOfMonth: billingDay,
-                      oneDayBefore: true,
-                    );
-                    await NotificationService.scheduleBillingReminder(
-                      id: math.Random().nextInt(1000000),
-                      title: 'Utility Bill Generation',
-                      body: 'Your $name ($type) bill should be generated today.',
-                      dayOfMonth: billingDay,
-                      oneDayBefore: false,
-                    );
+                    bool notifEnabled = true;
+
+                    try {
+                      // Schedule reminders
+                      await NotificationService.scheduleBillingReminder(
+                        id: math.Random().nextInt(1000000),
+                        title: 'Utility Bill Reminder',
+                        body: 'Your $name ($type) bill will be generated tomorrow!',
+                        dayOfMonth: billingDay,
+                        oneDayBefore: true,
+                      );
+                      await NotificationService.scheduleBillingReminder(
+                        id: math.Random().nextInt(1000000),
+                        title: 'Utility Bill Generation',
+                        body: 'Your $name ($type) bill should be generated today.',
+                        dayOfMonth: billingDay,
+                        oneDayBefore: false,
+                      );
+                    } catch (e) {
+                      notifEnabled = false;
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text('⚠️ Alert: Notification scheduling failed. Biller saved anyway.')),
+                        );
+                      }
+                    }
 
                     setState(() {
                       _billers.add(UtilityBiller(
@@ -162,6 +174,7 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
                         accountNumber: account,
                         billingDay: billingDay,
                         monthGap: monthGap,
+                        notificationEnabled: notifEnabled,
                       ));
                     });
                     _saveBillers();
@@ -208,7 +221,16 @@ class _UtilityBillersScreenState extends State<UtilityBillersScreen> {
                           backgroundColor: AppTheme.primaryBlue.withAlpha(20),
                           child: Icon(_getIconForType(biller.type), color: AppTheme.primaryBlue, size: 20),
                         ),
-                        title: Text(biller.name, style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.bold)),
+                        title: Row(
+                          children: [
+                            Text(biller.name, style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.bold)),
+                            if (!biller.notificationEnabled)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 8.0),
+                                child: Icon(Icons.notifications_off_rounded, color: Colors.orange, size: 16),
+                              ),
+                          ],
+                        ),
                         subtitle: Text("${biller.type} • ${biller.accountNumber}", style: const TextStyle(color: AppTheme.whiteTertiary, fontSize: 12)),
                         childrenPadding: const EdgeInsets.all(16),
                         children: [

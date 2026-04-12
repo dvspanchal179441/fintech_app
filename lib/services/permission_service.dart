@@ -13,6 +13,7 @@ class PermissionService {
     final statuses = await [
       Permission.sms,
       Permission.notification,
+      Permission.scheduleExactAlarm,
     ].request();
 
     final smsGranted = statuses[Permission.sms]?.isGranted ?? false;

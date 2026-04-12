@@ -177,6 +177,11 @@ class _SmartCardScreenState extends State<SmartCardScreen> {
                         const SizedBox(width: 4),
                         Text('Tap to view', style: TextStyle(color: Colors.white.withAlpha(120), fontSize: 11)),
                         const SizedBox(width: 12),
+                        if (card['notificationEnabled'] == false)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 8.0),
+                            child: Icon(Icons.notifications_off_rounded, color: Colors.orange, size: 16),
+                          ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                           decoration: BoxDecoration(
@@ -428,22 +433,32 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   final cardId = math.Random().nextInt(1000000);
-                  
-                  // Schedule notifications
-                  await NotificationService.scheduleBillingReminder(
-                    id: cardId,
-                    title: 'Bill Generation Reminder',
-                    body: 'Your ${_numberController.text.substring(_numberController.text.length - 4)} card bill will be generated tomorrow!',
-                    dayOfMonth: _billingDay,
-                    oneDayBefore: true,
-                  );
-                  await NotificationService.scheduleBillingReminder(
-                    id: cardId + 1,
-                    title: 'Bill Generated Today',
-                    body: 'Your ${_numberController.text.substring(_numberController.text.length - 4)} card bill is generated today.',
-                    dayOfMonth: _billingDay,
-                    oneDayBefore: false,
-                  );
+                  bool notifEnabled = true;
+
+                  try {
+                    // Schedule notifications
+                    await NotificationService.scheduleBillingReminder(
+                      id: cardId,
+                      title: 'Bill Generation Reminder',
+                      body: 'Your ${_numberController.text.substring(_numberController.text.length - 4)} card bill will be generated tomorrow!',
+                      dayOfMonth: _billingDay,
+                      oneDayBefore: true,
+                    );
+                    await NotificationService.scheduleBillingReminder(
+                      id: cardId + 1,
+                      title: 'Bill Generated Today',
+                      body: 'Your ${_numberController.text.substring(_numberController.text.length - 4)} card bill is generated today.',
+                      dayOfMonth: _billingDay,
+                      oneDayBefore: false,
+                    );
+                  } catch (e) {
+                    notifEnabled = false;
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('⚠️ Alert: Notification scheduling failed. Card saved anyway.')),
+                      );
+                    }
+                  }
 
                   if (!context.mounted) return;
                   Navigator.pop(context, {
@@ -454,6 +469,7 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                     'bankName': 'Manual Card',
                     'billingDay': _billingDay,
                     'monthGap': _monthGap,
+                    'notificationEnabled': notifEnabled,
                   });
                 }
               },

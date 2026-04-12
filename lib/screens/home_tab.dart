@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../services/local_storage_service.dart';
-import '../services/sms_parser_service.dart';
-import '../services/permission_service.dart';
+import 'synced_messages_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -82,7 +81,16 @@ class _HomeTabState extends State<HomeTab> {
           IconButton(
             icon: const Icon(Icons.sync_rounded),
             tooltip: 'Sync from SMS',
-            onPressed: () => _simulateSmsSync(),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SyncedMessagesScreen(
+                    onSyncComplete: () => _loadBills(),
+                  ),
+                ),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded),
@@ -599,68 +607,4 @@ class _HomeTabState extends State<HomeTab> {
     return const Center(child: Text('No bills found', style: TextStyle(color: AppTheme.whiteTertiary)));
   }
 
-  Future<void> _simulateSmsSync() async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    // Check SMS permission first
-    final hasPerm = await PermissionService.hasSmsPermission();
-    if (!hasPerm) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text('⚠️ SMS permission denied. Enable in Settings.'),
-          action: SnackBarAction(
-            label: 'SETTINGS',
-            onPressed: PermissionService.openSettings,
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _loading = true);
-
-    try {
-      final detectedBills = await SMSParserService.scanInboxForBills();
-
-      if (!mounted) return;
-
-      if (detectedBills.isEmpty) {
-        setState(() => _loading = false);
-        messenger.showSnackBar(
-          const SnackBar(content: Text('📭 No new banking bills found in SMS.')),
-        );
-        return;
-      }
-
-      // Deduplicate: skip bills already in list (same ID)
-      final existingIds = _bills.map((b) => b.id).toSet();
-      final newBills = detectedBills.where((b) => !existingIds.contains(b.id)).toList();
-
-      setState(() {
-        _bills.insertAll(0, newBills);
-        _loading = false;
-      });
-
-      await _saveBills();
-
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              newBills.isEmpty
-                  ? '✅ SMS scanned — all bills already tracked.'
-                  : '✅ Found ${newBills.length} new bill${newBills.length > 1 ? 's' : ''} from SMS!',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      messenger.showSnackBar(
-        SnackBar(content: Text('❌ SMS scan failed: $e')),
-      );
-    }
-  }
 }

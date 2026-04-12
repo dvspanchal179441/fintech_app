@@ -44,53 +44,43 @@ class SMSParserService {
     dotAll: true,
   );
 
-  /// Known banking sender address keywords.
-  static const List<String> _bankingSenders = [
-    'HDFCBK', 'ICICIB', 'SBICRD', 'SBMSMS', 'AXISBK', 'KOTAKB',
-    'INDUSB', 'YESBNK', 'PNBSMS', 'BOISMS', 'CBSSBI', 'PAYTMB',
-    'ATMMSG', 'NPCI', 'BARODASMS', 'UNIONB', 'CREDTC',
-  ];
+  // (Banking senders restriction removed to support all regional/small finance banks)
 
-  static bool _isBankingSender(String address) {
-    final upper = address.toUpperCase();
-    return _bankingSenders.any((s) => upper.contains(s)) ||
-        upper.startsWith('VM-') ||
-        upper.startsWith('VD-') ||
-        upper.startsWith('AX-') ||
-        upper.startsWith('BZ-');
-  }
-
-  /// Reads the actual device SMS inbox and parses banking messages.
-  /// Returns a list of [Bill] objects detected from real SMS data.
-  static Future<List<Bill>> scanInboxForBills() async {
+  /// Reads the actual device SMS inbox and returns recent messages.
+  static Future<List<SmsMessage>> getAllRawMessages() async {
     _enforceOfflinePrivacy();
-
     final cutoff = DateTime.now().subtract(const Duration(days: 60));
-
-    List<SmsMessage> messages = [];
     try {
-      messages = await _query.querySms(
+      final messages = await _query.querySms(
         kinds: [SmsQueryKind.inbox],
         count: 500,
-        // Only fetch 500 messages, and filter dates locally
       );
+      return messages.where((msg) {
+        final smsDate = msg.date;
+        if (smsDate == null) return false;
+        return smsDate.isAfter(cutoff);
+      }).toList();
     } catch (e) {
       debugPrint('❌ Error reading SMS: $e');
       return [];
     }
+  }
 
-    debugPrint('📩 Total SMS read: ${messages.length}');
+  /// Convenience method to directly fetch and parse.
+  static Future<List<Bill>> scanInboxForBills() async {
+    final messages = await getAllRawMessages();
+    return parseBillsFromMessages(messages);
+  }
 
+  /// Parses banking messages from a list of SMS.
+  static List<Bill> parseBillsFromMessages(List<SmsMessage> messages) {
     final List<Bill> detectedBills = [];
 
     for (final msg in messages) {
-      final address = msg.address ?? '';
       final body = msg.body ?? '';
       final smsDate = msg.date ?? DateTime.now();
 
-      if (smsDate.isBefore(cutoff)) continue;
       if (body.isEmpty) continue;
-      if (!_isBankingSender(address)) continue;
 
       // Try HDFC/ICICI
       final hdfcMatch = hdfcIciciRegExp.firstMatch(body);
