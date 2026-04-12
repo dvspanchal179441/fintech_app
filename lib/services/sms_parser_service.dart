@@ -1,57 +1,56 @@
 import 'package:flutter/foundation.dart';
-import 'package:telephony/telephony.dart';
+import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import '../models/models.dart';
 
 /// Offline-first SMS intelligence engine for Indian banking SMS formats.
 /// All parsing is done on-device — no network calls are made.
 class SMSParserService {
-  static final Telephony _telephony = Telephony.instance;
+  static final SmsQuery _query = SmsQuery();
 
-  // ─── Regex Patterns for Indian Banks ──────────────────────────────────────
+  // ─── Regex Patterns for Indian Banks ─────────────────────────────────────
 
   // HDFC / ICICI credit card statement
   static final RegExp hdfcIciciRegExp = RegExp(
-    r'(?:statement|bill).*?(?:card|a\/c|ac).*?(?:ending|no\.?|x+)[\s*]*(\d{4}).*?(?:total\s+)?(?:amt\s+)?due.*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*).*?(?:due\s+date|pay\s+by)\s*[:\-]?\s*(\d{1,2}[-\/\s]\w+[-\/\s]?\d{2,4})',
+    r'(?:statement|bill).*?(?:card|a\/c|ac).*?(?:ending|no\.?|x+)[\s*]*(\d{4})'
+    r'.*?(?:total\s+)?(?:amt\s+)?due.*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*)'
+    r'.*?(?:due\s+date|pay\s+by)\s*[:\-]?\s*(\d{1,2}[-\/\s]\w+[-\/\s]?\d{0,4})',
     caseSensitive: false,
     dotAll: true,
   );
 
   // SBI credit card statement
   static final RegExp sbiRegExp = RegExp(
-    r'sbi\s+(?:credit\s+)?card.*?(?:ending|no\.?|x+)[\s*]*(\d{4}).*?(?:total\s+)?due.*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*).*?(?:by|before|due\s+date)\s*[:\-]?\s*(\d{1,2}[-\/\s]\w+)',
+    r'sbi\s+(?:credit\s+)?card.*?(?:ending|no\.?|x+)[\s*]*(\d{4})'
+    r'.*?(?:total\s+)?due.*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*)'
+    r'.*?(?:by|before|due\s+date)\s*[:\-]?\s*(\d{1,2}[-\/\s]\w+)',
     caseSensitive: false,
     dotAll: true,
   );
 
   // Axis Bank credit card
   static final RegExp axisRegExp = RegExp(
-    r'axis\s+bank.*?(?:card|a\/c).*?(\d{4}).*?(?:minimum|total)\s+(?:amount\s+)?due.*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*).*?(?:due|by)\s*[:\-]?\s*(\d{1,2}[-\/\s]\w+)',
+    r'axis\s+bank.*?(?:card|a\/c).*?(\d{4})'
+    r'.*?(?:minimum|total)\s+(?:amount\s+)?due.*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*)'
+    r'.*?(?:due|by)\s*[:\-]?\s*(\d{1,2}[-\/\s]\w+)',
     caseSensitive: false,
     dotAll: true,
   );
 
-  // Generic transaction debit SMS
-  static final RegExp debitRegExp = RegExp(
-    r'(?:debited|debit|spent|withdrawn|paid).*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*).*?(?:a\/c|account|card).*?(?:ending|x+|last\s+\d+\s+digits?)?[\s*]*(\d{4})',
-    caseSensitive: false,
-    dotAll: true,
-  );
-
-  // UPI payment
+  // UPI payment detection
   static final RegExp upiRegExp = RegExp(
-    r'(?:debited|sent|paid|transferred).*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*).*?(?:to|trf\s+to)\s+([\w\s@.]+?)(?:\s+on|\s+ref|\s+upi|\.|$)',
+    r'(?:debited|sent|paid|transferred).*?(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*)'
+    r'.*?(?:to|trf\s+to)\s+([\w\s@.]+?)(?:\s+on|\s+ref|\s+upi|\.|$)',
     caseSensitive: false,
     dotAll: true,
   );
 
-  /// Banking sender address prefixes commonly used by Indian banks.
+  /// Known banking sender address keywords.
   static const List<String> _bankingSenders = [
     'HDFCBK', 'ICICIB', 'SBICRD', 'SBMSMS', 'AXISBK', 'KOTAKB',
     'INDUSB', 'YESBNK', 'PNBSMS', 'BOISMS', 'CBSSBI', 'PAYTMB',
-    'ATMMSG', 'CREDTC', 'NPCI', 'IMPSMS', 'BARODASMS', 'UNIONB',
+    'ATMMSG', 'NPCI', 'BARODASMS', 'UNIONB', 'CREDTC',
   ];
 
-  /// Returns true if an SMS sender address looks like a bank.
   static bool _isBankingSender(String address) {
     final upper = address.toUpperCase();
     return _bankingSenders.any((s) => upper.contains(s)) ||
@@ -66,29 +65,14 @@ class SMSParserService {
   static Future<List<Bill>> scanInboxForBills() async {
     _enforceOfflinePrivacy();
 
-    // Request permission to read SMS (checked before calling)
-    final bool? permissionGranted = await _telephony.requestSmsPermissions;
-    if (permissionGranted != true) {
-      debugPrint('❌ SMS permission not granted.');
-      return [];
-    }
-
-    // Query inbox: last 60 days, only inboxed messages
     final cutoff = DateTime.now().subtract(const Duration(days: 60));
-    final cutoffMs = cutoff.millisecondsSinceEpoch;
 
     List<SmsMessage> messages = [];
     try {
-      messages = await _telephony.getInboxSms(
-        columns: [
-          SmsColumn.ADDRESS,
-          SmsColumn.BODY,
-          SmsColumn.DATE,
-        ],
-        filter: SmsFilter.where(SmsColumn.DATE).greaterThan(cutoffMs.toString()),
-        sortOrder: [
-          OrderBy(SmsColumn.DATE, sort: Sort.DESC),
-        ],
+      messages = await _query.querySms(
+        kinds: [SmsQueryKind.inbox],
+        count: 500,
+        // Only fetch 500 messages, and filter dates locally
       );
     } catch (e) {
       debugPrint('❌ Error reading SMS: $e');
@@ -102,41 +86,41 @@ class SMSParserService {
     for (final msg in messages) {
       final address = msg.address ?? '';
       final body = msg.body ?? '';
-      final dateMs = msg.date ?? DateTime.now().millisecondsSinceEpoch;
-      final smsDate = DateTime.fromMillisecondsSinceEpoch(dateMs);
+      final smsDate = msg.date ?? DateTime.now();
 
+      if (smsDate.isBefore(cutoff)) continue;
       if (body.isEmpty) continue;
       if (!_isBankingSender(address)) continue;
 
-      // Try HDFC/ICICI pattern
+      // Try HDFC/ICICI
       final hdfcMatch = hdfcIciciRegExp.firstMatch(body);
       if (hdfcMatch != null) {
         final bill = _buildBill(hdfcMatch, 'HDFC/ICICI', smsDate);
         if (bill != null) {
           detectedBills.add(bill);
-          debugPrint('✅ Detected HDFC/ICICI bill: ₹${bill.amount}');
+          debugPrint('✅ HDFC/ICICI bill detected: ₹${bill.amount}');
           continue;
         }
       }
 
-      // Try SBI pattern
+      // Try SBI
       final sbiMatch = sbiRegExp.firstMatch(body);
       if (sbiMatch != null) {
         final bill = _buildBill(sbiMatch, 'SBI', smsDate);
         if (bill != null) {
           detectedBills.add(bill);
-          debugPrint('✅ Detected SBI bill: ₹${bill.amount}');
+          debugPrint('✅ SBI bill detected: ₹${bill.amount}');
           continue;
         }
       }
 
-      // Try Axis Bank pattern
+      // Try Axis Bank
       final axisMatch = axisRegExp.firstMatch(body);
       if (axisMatch != null) {
         final bill = _buildBill(axisMatch, 'Axis Bank', smsDate);
         if (bill != null) {
           detectedBills.add(bill);
-          debugPrint('✅ Detected Axis bill: ₹${bill.amount}');
+          debugPrint('✅ Axis bill detected: ₹${bill.amount}');
           continue;
         }
       }
@@ -146,8 +130,9 @@ class SMSParserService {
     return detectedBills;
   }
 
-  /// Builds a Bill object from a regex match.
-  static Bill? _buildBill(RegExpMatch match, String bankName, DateTime smsDate) {
+  /// Builds a [Bill] from a regex match.
+  static Bill? _buildBill(
+      RegExpMatch match, String bankName, DateTime smsDate) {
     try {
       final cardEnding = match.group(1) ?? '????';
       final amountStr = match.group(2)?.replaceAll(',', '') ?? '0';
@@ -156,12 +141,12 @@ class SMSParserService {
 
       if (amount <= 0) return null;
 
-      // Parse the due date string — try multiple formats
       final dueDate = _parseDueDate(dueDateStr) ??
           DateTime.now().add(const Duration(days: 15));
 
       return Bill(
-        id: 'SMS-${bankName.replaceAll('/', '')}-$cardEnding-${smsDate.millisecondsSinceEpoch}',
+        id: 'SMS-${bankName.replaceAll('/', '')}-$cardEnding'
+            '-${smsDate.millisecondsSinceEpoch}',
         amount: amount,
         isPaid: false,
         dueDate: dueDate,
@@ -169,79 +154,73 @@ class SMSParserService {
         cardId: '$bankName-$cardEnding',
       );
     } catch (e) {
-      debugPrint('⚠️ Error building bill from SMS: $e');
+      debugPrint('⚠️ Error building bill: $e');
       return null;
     }
   }
 
-  /// Tries to parse a date string from Indian banking SMS formats.
+  /// Parses Indian banking date formats: "25-Apr-26", "25 Apr 2026", "25/04/2026".
   static DateTime? _parseDueDate(String raw) {
     raw = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
-    // Try dd-Mon-yy or dd/Mon/yy: "25-Apr-26", "25 Apr 2026"
-    final patterns = [
-      RegExp(r'(\d{1,2})[-\/\s](\w{3})[-\/\s](\d{2,4})'),
-      RegExp(r'(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})'),
-    ];
+
     const months = {
-      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
-      'may': 5, 'jun': 6, 'jul': 7, 'aug': 8,
-      'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+      'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
     };
 
-    for (final pattern in patterns) {
-      final m = pattern.firstMatch(raw);
-      if (m != null) {
-        final day = int.tryParse(m.group(1) ?? '');
-        final monthRaw = m.group(2);
-        final yearRaw = m.group(3);
-
-        if (day == null || monthRaw == null || yearRaw == null) continue;
-
-        int? month = int.tryParse(monthRaw) ??
-            months[monthRaw.toLowerCase().substring(0, 3)];
-        int? year = int.tryParse(yearRaw);
-        if (year != null && year < 100) year += 2000;
-
-        if (month != null && year != null) {
-          return DateTime(year, month, day);
-        }
+    // Pattern 1: dd-Mon-yy or dd Mon yyyy  e.g. "25 Apr 26"
+    final p1 = RegExp(r'(\d{1,2})[-\/\s]([a-z]{3})[-\/\s]?(\d{2,4})',
+        caseSensitive: false);
+    final m1 = p1.firstMatch(raw);
+    if (m1 != null) {
+      final day = int.tryParse(m1.group(1)!);
+      final month = months[m1.group(2)!.toLowerCase()];
+      var year = int.tryParse(m1.group(3)!);
+      if (year != null && year < 100) year += 2000;
+      if (day != null && month != null && year != null) {
+        return DateTime(year, month, day);
       }
     }
+
+    // Pattern 2: dd/MM/yyyy or dd-MM-yyyy
+    final p2 = RegExp(r'(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})');
+    final m2 = p2.firstMatch(raw);
+    if (m2 != null) {
+      final day = int.tryParse(m2.group(1)!);
+      final month = int.tryParse(m2.group(2)!);
+      var year = int.tryParse(m2.group(3)!);
+      if (year != null && year < 100) year += 2000;
+      if (day != null && month != null && year != null) {
+        return DateTime(year, month, day);
+      }
+    }
+
     return null;
   }
 
-  /// Matches UPI payment SMS against pending bills to auto-mark as paid.
+  /// Matches UPI SMS against pending bills and auto-marks them paid.
   static void detectAndMatchUpiPayments(
     String message,
     DateTime smsTimestamp,
     List<Bill> pendingBills,
   ) {
     _enforceOfflinePrivacy();
-    final upiMatch = upiRegExp.firstMatch(message);
-    if (upiMatch != null) {
-      final amountStr = upiMatch.group(1)?.replaceAll(',', '') ?? '0';
-      final paidAmount = double.tryParse(amountStr) ?? 0.0;
-      _compareAndAutoMatchBill(paidAmount, smsTimestamp, pendingBills);
-    }
-  }
-
-  static void _compareAndAutoMatchBill(
-    double paidAmount,
-    DateTime smsTimestamp,
-    List<Bill> pendingBills,
-  ) {
-    for (var bill in pendingBills) {
-      if (!bill.isPaid && (bill.amount - paidAmount).abs() < 1.0) {
-        bill.isPaid = true;
-        debugPrint(
-            '✅ Auto-matched UPI payment of ₹$paidAmount to bill ${bill.id}.');
-        break;
+    final m = upiRegExp.firstMatch(message);
+    if (m != null) {
+      final paidAmount =
+          double.tryParse(m.group(1)?.replaceAll(',', '') ?? '0') ?? 0.0;
+      for (final bill in pendingBills) {
+        if (!bill.isPaid && (bill.amount - paidAmount).abs() < 1.0) {
+          bill.isPaid = true;
+          debugPrint(
+              '✅ Auto-matched UPI ₹$paidAmount → bill ${bill.id}');
+          break;
+        }
       }
     }
   }
 
-  /// Enforces that this module runs strictly offline.
   static void _enforceOfflinePrivacy() {
-    debugPrint('🔒 SMS Parsing executing strictly locally. No network calls.');
+    debugPrint('🔒 SMS parsing — strictly on-device, no network calls.');
   }
 }
