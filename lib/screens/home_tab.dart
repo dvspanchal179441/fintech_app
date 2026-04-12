@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../services/local_storage_service.dart';
+import '../services/sms_parser_service.dart';
+import '../services/permission_service.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -415,9 +417,17 @@ class _HomeTabState extends State<HomeTab> {
             Text('₹${bill.amount.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.white, fontWeight: FontWeight.w800, fontSize: 16)),
             if (!bill.isPaid)
                GestureDetector(
-                 onTap: () {
+                 onTap: () async {
                    setState(() => bill.isPaid = true);
-                   _saveBills();
+                   await _saveBills();
+                   if (mounted) {
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       const SnackBar(
+                         content: Text('✅ Bill marked as paid!'),
+                         backgroundColor: AppTheme.success,
+                       ),
+                     );
+                   }
                  },
                  child: Text('PAY', style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.w900, fontSize: 12)),
                ),
@@ -589,26 +599,68 @@ class _HomeTabState extends State<HomeTab> {
     return const Center(child: Text('No bills found', style: TextStyle(color: AppTheme.whiteTertiary)));
   }
 
-  void _simulateSmsSync() {
+  Future<void> _simulateSmsSync() async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Check SMS permission first
+    final hasPerm = await PermissionService.hasSmsPermission();
+    if (!hasPerm) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('⚠️ SMS permission denied. Enable in Settings.'),
+          action: SnackBarAction(
+            label: 'SETTINGS',
+            onPressed: PermissionService.openSettings,
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
-    // Simulation of parsing SMS inbox
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          // Mocking a detected HDFC Card bill
-          _bills.insert(0, Bill(
-            id: "SMS-${DateTime.now().millisecondsSinceEpoch}",
-            amount: 4500.0,
-            isPaid: false,
-            dueDate: DateTime.now().add(const Duration(days: 12)),
-            billerName: "HDFC Card (**1234)",
-            cardId: "HDFC-1234",
-          ));
-          _loading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Scanned SMS Inbox. 1 new bill detected.')));
-        _saveBills();
+
+    try {
+      final detectedBills = await SMSParserService.scanInboxForBills();
+
+      if (!mounted) return;
+
+      if (detectedBills.isEmpty) {
+        setState(() => _loading = false);
+        messenger.showSnackBar(
+          const SnackBar(content: Text('📭 No new banking bills found in SMS.')),
+        );
+        return;
       }
-    });
+
+      // Deduplicate: skip bills already in list (same ID)
+      final existingIds = _bills.map((b) => b.id).toSet();
+      final newBills = detectedBills.where((b) => !existingIds.contains(b.id)).toList();
+
+      setState(() {
+        _bills.insertAll(0, newBills);
+        _loading = false;
+      });
+
+      await _saveBills();
+
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              newBills.isEmpty
+                  ? '✅ SMS scanned — all bills already tracked.'
+                  : '✅ Found ${newBills.length} new bill${newBills.length > 1 ? 's' : ''} from SMS!',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text('❌ SMS scan failed: $e')),
+      );
+    }
   }
 }

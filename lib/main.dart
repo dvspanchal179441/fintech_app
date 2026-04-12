@@ -4,11 +4,13 @@ import 'screens/home_tab.dart';
 import 'screens/quick_access_screen.dart';
 import 'screens/menu_screen.dart';
 import 'services/notification_service.dart';
+import 'services/permission_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.init();
+  await PermissionService.requestAll(); // Request SMS + Notification at startup
   runApp(const FintechApp());
 }
 

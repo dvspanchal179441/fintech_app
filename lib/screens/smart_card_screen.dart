@@ -336,7 +336,12 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                 FilteringTextInputFormatter.digitsOnly,
                 _CardNumberFormatter(),
               ],
-              validator: (v) => (v == null || v.replaceAll('-', '').length < 16) ? 'Invalid card number' : null,
+              maxLength: 19,
+              validator: (v) {
+                final digits = v?.replaceAll('-', '') ?? '';
+                if (digits.length != 16) return 'Card number must be 16 digits';
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             _field(
@@ -360,7 +365,17 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
                       FilteringTextInputFormatter.digitsOnly,
                       _ExpiryDateFormatter(),
                     ],
-                    validator: (v) => (v == null || !v.contains('/')) ? 'Invalid expiry' : null,
+                    maxLength: 5,
+                    validator: (v) {
+                      if (v == null || !v.contains('/')) return 'Format: MM/YY';
+                      final parts = v.split('/');
+                      if (parts.length != 2) return 'Format: MM/YY';
+                      final month = int.tryParse(parts[0]);
+                      final year = int.tryParse(parts[1]);
+                      if (month == null || month < 1 || month > 12) return 'Invalid month (01–12)';
+                      if (year == null || parts[1].length != 2) return 'Format: MM/YY';
+                      return null;
+                    },
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -481,17 +496,21 @@ class _AddSmartCardScreenState extends State<AddSmartCardScreen> {
 class _CardNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    var text = newValue.text;
-    if (newValue.selection.baseOffset == 0) return newValue;
+    // Cap raw digits at 16
+    var digits = newValue.text.replaceAll('-', '');
+    if (digits.length > 16) digits = digits.substring(0, 16);
+    if (digits.isEmpty) {
+      return newValue.copyWith(text: '', selection: const TextSelection.collapsed(offset: 0));
+    }
     var buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      buffer.write(text[i]);
-      var nonZeroIndex = i + 1;
-      if (nonZeroIndex % 4 == 0 && nonZeroIndex != text.length) {
+    for (int i = 0; i < digits.length; i++) {
+      buffer.write(digits[i]);
+      final nonZeroIndex = i + 1;
+      if (nonZeroIndex % 4 == 0 && nonZeroIndex != digits.length) {
         buffer.write('-');
       }
     }
-    var string = buffer.toString();
+    final string = buffer.toString();
     return newValue.copyWith(
       text: string,
       selection: TextSelection.collapsed(offset: string.length),
@@ -502,17 +521,20 @@ class _CardNumberFormatter extends TextInputFormatter {
 class _ExpiryDateFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    var text = newValue.text;
-    if (newValue.selection.baseOffset == 0) return newValue;
-    var buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      buffer.write(text[i]);
-      var nonZeroIndex = i + 1;
-      if (nonZeroIndex % 2 == 0 && nonZeroIndex != text.length) {
+    // Cap raw digits at 4 (MMYY)
+    var digits = newValue.text.replaceAll('/', '');
+    if (digits.length > 4) digits = digits.substring(0, 4);
+    if (digits.isEmpty) {
+      return newValue.copyWith(text: '', selection: const TextSelection.collapsed(offset: 0));
+    }
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      buffer.write(digits[i]);
+      if (i == 1 && i != digits.length - 1) {
         buffer.write('/');
       }
     }
-    var string = buffer.toString();
+    final string = buffer.toString();
     return newValue.copyWith(
       text: string,
       selection: TextSelection.collapsed(offset: string.length),
